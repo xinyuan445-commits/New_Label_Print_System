@@ -1,0 +1,393 @@
+#AOCI-CODE-VOLUME: 1
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/===
+.env.example[FC8T]: F:列出本机和Docker管理员初始化、共享模板、会话及U8连接占位配置 | R:code:backend/local_server.py,code:backend/app/cli/seed.py,code:compose.yml | A:- | S:008只读998测试写入；条码段独立于目标库；LABEL_ADMIN与ADMIN是不同初始化入口，真实凭据只保存在.env
+.gitattributes[FC5T]: F:统一文本检出为LF以稳定AOCI字节基线 | R:- | A:- | S:二进制由Git自动识别不转换
+.gitignore[FS6S]: F:排除凭据、数据库、构建产物与本机AOCI配置并保留配置示例 | R:code:docs/aoci/README.md | A:- | S:.env.example允许版本化，AOCI非Git扫描仍需独立排除；忽略规则不自动移除已暂存文件
+.pre-commit-config.yaml[FQ5T]: F:配置提交前格式、静态分析与敏感文件检查 | R:code:backend/pyproject.toml,code:frontend/eslint.config.js | A:- | S:-
+AGENTS.md[SC9S]: F:规定项目工作边界、独立发布位置、业务规则与可选AOCI维护纪律 | R:code:docs/aoci/business-rules.md,code:docs/项目复用指南.md,code:tools/aoci/maintenance.ps1 | A:- | S:独立仓库为New_Label_Print_System；旧嵌套工作区仅选择本项目并保留上层暂存；AOCI限实际项目根，无工具照源码文档开发且不伪造索引校验
+CHANGELOG.md[SV4L]: F:记录当前U8与客户端打印定制，并保留上游版本历史 | R:code:README.md | A:- | S:定制列在Unreleased，基础版本仍为0.23.2；变更记录不代替部署或硬件验收
+README.md[SG7T]: F:提供独立标签仓库入口、功能、两种启动方式和无AOCI交接文档 | R:code:start.ps1,code:compose.yml,code:docs/README.md,code:docs/项目复用指南.md | A:- | S:New_Label_Print_System根即项目；独立仓库能识别根工作流，线上结果另验；SQLite与PostgreSQL分开，源码不含本机模板，008只读
+compose.yml[OV7S]: F:编排Nginx、Flask、PostgreSQL和Redis并传入U8与账号初始化配置 | R:code:backend/docker-entrypoint.sh,code:frontend/Dockerfile,code:backend/app/cli/seed.py | A:services,volumes | S:区别SQLite本机模式；宿主绑定127.0.0.1:18003，默认上海时区，库与文件分卷；标签助手产物不随默认镜像提供
+项目说明.md[SG7L]: F:汇总独立标签系统的功能架构、技术栈、U8规则及部署维护边界 | R:code:AGENTS.md,code:docs/aoci/architecture.md,code:docs/aoci/business-rules.md,code:docs/aoci/database-schema.md,code:docs/部署与维护.md,code:docs/项目复用指南.md | A:- | S:独立发布到New_Label_Print_System根；008只读998测试写入；查询字段非模板变量，本机与Docker初始化分开；根工作流能识别不代表CI通过，不保存真实密码
+.dockerignore[FV5T]: F:限制前端根目录镜像构建上下文，排除本机数据、凭据、依赖和AOCI运行文件 | R:code:frontend/Dockerfile,code:compose.yml | A:- | S:前端使用项目根上下文，不能仅依赖frontend内的排除文件
+start.ps1[OV7T]: F:以自身目录安装锁定依赖、按需构建前端并启动本机标签服务 | R:code:backend/local_server.py,code:.env.example,code:frontend/package.json | A:BuildFrontend | S:要求已有.env以及uv和npm.cmd；默认仅缺前端产物时构建，改动需BuildFrontend；失败停止且恢复工作目录，不清空本机数据
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/.github/workflows/===
+ci.yml[OQ6T]: F:运行Python和前端的静态检查、测试与构建 | R:code:backend/pyproject.toml,code:frontend/package.json | A:- | S:此文件位于嵌套项目，当前上层Git仓库不会自动执行其Actions
+release.yml[OV6T]: F:为发布版本交叉编译并上传连接器与校验和 | R:code:connector/build-all.sh | A:- | S:手动重跑按指定tag上传并覆盖同名附件
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/===
+.dockerignore[FV4T]: F:缩小后端镜像构建上下文并排除本地环境 | R:code:backend/Dockerfile | A:- | S:-
+.python-version[FC5T]: F:指定后端Python解释器版本 | R:code:backend/pyproject.toml | A:- | S:-
+Dockerfile[OV6T]: F:构建安装uv依赖及ODBC驱动的后端镜像 | R:code:backend/docker-entrypoint.sh,code:backend/pyproject.toml | A:- | S:Windows本地入口不经过该镜像启动流程
+alembic.ini[FD5T]: F:配置数据库迁移脚本位置与日志 | R:code:backend/alembic/env.py | A:- | S:-
+docker-entrypoint.sh[OV5T]: F:容器启动时应用迁移并交接主进程 | R:code:backend/pyproject.toml | A:RUN_MIGRATIONS,SEED_ADMIN_ON_START | S:迁移默认执行且失败终止；管理员播种可选并容忍失败
+local_server.py[RC8S]: F:读取项目环境并启动SQLite持久化的本机API和静态网页 | R:code:backend/app/factory.py,code:backend/app/config.py,code:backend/app/services/local_printers.py | A:main,serve_on_hosts,seed_label_formats | S:固定.local-data保存数据与密钥，create_all只补表；IPv4默认127.0.0.1:18003且先绑定全部地址；前端须构建，共用模板默认开，跳过Redis会话而非所有异步功能
+pyproject.toml[FV6T]: F:声明 Python 后端依赖、版本及开发检查配置 | R:code:backend/uv.lock,code:backend/app/version.py | A:project,dependencies | S:要求 Python 3.12 以上，包含 U8 ODBC 与 PDF 渲染依赖
+uv.lock[FV4L]: F:锁定 Python 依赖版本、平台选择和包校验信息 | R:code:backend/pyproject.toml | A:package,resolution-markers | S:通过 uv 更新依赖解析，避免手改锁文件
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/alembic/===
+env.py[PD6T]: F:加载模型元数据与环境连接并执行迁移 | R:code:backend/app/models/__init__.py,code:backend/app/db/base.py | A:run_migrations_offline,run_migrations_online | S:迁移模式区别于本地入口的create_all
+script.py.mako[FD3T]: F:提供Alembic新迁移模块模板 | R:code:backend/alembic/env.py | A:- | S:-
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/alembic/versions/===
+0001_initial_users.py[PD6T]: F:建立用户与角色数据结构 | R:code:backend/app/models/user.py | A:upgrade,downgrade | S:该迁移使用PostgreSQL角色枚举
+0002_templates_formats_assets.py[PD6S]: F:建立模板、规格和图片资产表及初始规格 | R:code:backend/app/models/template.py,code:backend/app/models/label_format.py,code:backend/app/models/asset.py | A:upgrade,downgrade | S:画布持久化使用JSONB，规格种子不等于本地create_all初始化
+0003_datasets.py[PD5T]: F:创建用户数据集及列结构持久化 | R:code:backend/app/models/dataset.py | A:upgrade,downgrade | S:-
+0004_custom_label_format.py[PD5T]: F:补充自定义标签规格 | R:code:backend/app/models/label_format.py | A:upgrade,downgrade | S:-
+0005_sqlite_dataset_source.py[PD5T]: F:为数据集增加SQLite文件查询来源字段 | R:code:backend/app/models/dataset.py,code:backend/app/services/sqlite_source.py | A:upgrade,downgrade | S:此SQLite数据源功能区别于应用自身pilot.db
+0006_asset_sha256.py[PD6T]: F:增加图片摘要索引并回填现有文件SHA256 | R:code:backend/app/models/asset.py,code:backend/app/services/assets.py | A:upgrade,downgrade | S:仅回填摘要为空且磁盘文件存在的资产，缺失文件保留空值
+0007_devices_print_jobs.py[PH6S]: F:建立连接器设备、令牌摘要与打印任务队列 | R:code:backend/app/models/device.py,code:backend/app/models/print_job.py | A:upgrade,downgrade | S:设备名称按用户唯一，令牌保存摘要而非原文
+0008_captures.py[PH5T]: F:创建设备ZPL捕获收件箱表 | R:code:backend/app/models/capture.py | A:upgrade,downgrade | S:-
+0009_folders.py[PD5T]: F:增加用户模板目录及模板目录关联 | R:code:backend/app/models/folder.py,code:backend/app/models/template.py | A:upgrade,downgrade | S:删除目录将模板目录置空，不删除模板
+0010_folder_color_featured_image.py[PD5T]: F:增加目录颜色和模板封面资产引用 | R:code:backend/app/models/folder.py,code:backend/app/models/template.py | A:upgrade,downgrade | S:删除封面资产仅清空引用
+0011_template_versions.py[PD7T]: F:建立模板画布、尺寸和作者的版本快照 | R:code:backend/app/models/template_version.py,code:backend/app/services/template_versions.py | A:upgrade,downgrade | S:手动保存产生版本，自动保存只覆盖当前模板
+0012_generated_files.py[PD6T]: F:建立持久生成文件索引和来源模板快照 | R:code:backend/app/models/generated_file.py | A:upgrade,downgrade | S:删除模板将外键置空，历史模板名称仍保留
+0013_bill_favorites.py[PD6T]: F:创建按用户排序的常用单据类型表 | R:code:backend/app/models/bill_favorite.py,code:backend/app/routes/u8.py | A:upgrade,downgrade | S:账号与单据类型唯一，最多8项由接口验证
+0014_user_disabled_pages.py[PI7T]: F:建立用户与禁用功能的复合键关联 | R:code:backend/app/models/user_disabled_page.py,code:backend/app/models/user.py | A:upgrade,downgrade | S:无配置默认启用，与菜单隐藏配置分开
+0015_user_hidden_pages.py[PI6T]: F:创建独立的账号菜单隐藏关联 | R:code:backend/app/models/user_hidden_page.py | A:upgrade,downgrade | S:隐藏菜单不撤销接口权限
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/===
+__init__.py[EG5T]: F:导出后端应用工厂 | R:code:backend/app/factory.py | A:create_app | S:-
+api_helpers.py[MS7T]: F:生成可序列化校验错误并加固图片响应 | R:code:backend/app/routes/assets.py | A:validation_error_response,harden_image_response | S:SVG直接访问使用sandbox与nosniff阻止同源脚本执行
+config.py[FC8T]: F:读取Flask、数据源、会话与共享模板运行配置 | R:code:backend/app/factory.py,code:backend/local_server.py | A:Config.from_env | S:默认为Compose PostgreSQL与Redis；本地入口显式传SQLite配置
+extensions.py[RI5T]: F:建立可由工厂绑定的登录和会话扩展单例 | R:code:backend/app/factory.py | A:login_manager,session_ext | S:-
+factory.py[AG9S]: F:装配Flask、认证、CSRF、数据库与业务API功能权限 | R:code:backend/app/config.py,code:backend/app/models/user.py,code:backend/app/routes/u8.py,code:backend/app/routes/print_assistant.py | A:create_app | S:菜单隐藏不参与接口权限；单据权限可读模板列表、队列与助手安装包；管理员绕过功能禁用，Redis会话可由本机入口关闭
+version.py[FC3T]: F:提供运行时应用版本常量 | R:code:backend/pyproject.toml | A:APP_VERSION | S:发布时与项目包版本同步
+wsgi.py[EC6T]: F:创建 Gunicorn 使用的 WSGI 应用 | R:code:backend/app/factory.py | A:app | S:模块导入即调用应用工厂
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/auth/===
+csrf.py[MS8T]: F:验证变更请求的双提交CSRF令牌并维护cookie | R:code:frontend/src/lib/csrf.ts,code:backend/app/factory.py | A:init_csrf,rotate_csrf_cookie | S:agent使用设备Bearer认证免CSRF；登录退出轮换令牌
+decorators.py[MI7T]: F:校验已登录管理员或启用账号 | R:code:backend/app/models/user.py | A:admin_required,must_be_active | S:未登录返回401，角色或启用状态不符返回403
+device.py[MI8T]: F:验证连接器令牌并更新设备在线时间 | R:code:backend/app/models/device.py,code:backend/app/auth/csrf.py | A:device_token_required,current_device,hash_token | S:存储并查找整个令牌的SHA256摘要，不使用浏览器会话
+password.py[KI8T]: F:提供Argon2id密码散列、验证与重散列检查 | R:code:backend/app/services/users.py | A:hash_password,verify_password,needs_rehash | S:未知账号也验证预计算dummy摘要，减少账号枚举时间差
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/cli/===
+qa.py[XQ5L]: F:生成标定模板并测量PDF位置及文本对齐 | R:code:backend/app/services/pdf_renderer.py | A:qa_templates,qa_text_align | S:运行会创建模板和输出文件，不能当成只读检查
+seed.py[OI6T]: F:按环境变量幂等创建初始管理员并注册CLI | R:code:backend/app/services/users.py,code:compose.yml | A:seed_admin,register_cli | S:ADMIN_PASSWORD未设或空值时生成并输出随机密码；已有账号不重置；本机入口另用LABEL_ADMIN变量
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/db/===
+__init__.py[PD4T]: F:统一导出数据库基类与会话入口 | R:code:backend/app/db/base.py,code:backend/app/db/session.py | A:Base,get_session,init_engine | S:-
+base.py[PD6T]: F:提供声明模型元数据和一致的约束命名 | R:code:backend/alembic/env.py | A:Base | S:-
+session.py[PD8T]: F:初始化应用数据库引擎并管理请求级会话 | R:code:backend/app/factory.py | A:init_engine,get_engine,get_session,close_session | S:每个Flask上下文复用g中的会话，结束时关闭；提交后对象不自动失效
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/library/===
+01-etykieta-produktu.json[FB4T]: F:提供50乘30毫米产品EAN13起始模板 | R:code:backend/app/routes/library.py | A:- | S:示例条码需在设计器绑定业务变量
+02-adres-wysylki.json[FB4S]: F:提供4乘6英寸收货地址及Code128起始模板 | R:code:backend/app/routes/library.py | A:- | S:-
+03-cena-polkowa.json[FB4T]: F:提供A6价格、单位和日期起始模板 | R:code:backend/app/routes/library.py | A:- | S:-
+04-termin-przydatnosci.json[FB4T]: F:提供批号与生产保质日期的50乘30起始模板 | R:code:backend/app/services/placeholders.py | A:- | S:保质日期使用date加90天动态占位符
+05-magazyn-qr.json[FB4T]: F:提供仓库位置QR与描述起始模板 | R:code:backend/app/routes/library.py | A:- | S:QR示例内容固定，需要单独替换为位置变量
+06-inwentarz.json[FB4T]: F:提供2乘1英寸资产编号QR起始模板 | R:code:backend/app/routes/library.py | A:- | S:-
+07-tabela-cecha-wartosc.json[FB4T]: F:提供四行两列表格属性标签起始模板 | R:code:frontend/src/editor/objects/TableObject.tsx | A:- | S:-
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/models/===
+__init__.py[PD6T]: F:注册并统一导出全部应用数据库模型 | R:code:backend/local_server.py,code:backend/alembic/env.py | A:- | S:create_all前需导入模型，避免遗漏用户配置等表
+asset.py[PD6T]: F:保存图片资产尺寸、存储名与摘要元信息 | R:code:backend/app/services/assets.py | A:Asset | S:磁盘文件使用生成名称，不能使用用户原始文件名
+bill_favorite.py[PD7T]: F:持久化按用户排序的常用单据类型 | R:code:backend/app/routes/u8.py | A:BillFavorite | S:user_id与bill_type唯一；不影响首页待打印范围
+capture.py[PH5T]: F:保存设备捕获的ZPL及字节数 | R:code:backend/app/routes/captures.py | A:Capture | S:-
+dataset.py[PD6T]: F:保存CSV、XLSX和SQLite数据来源及列快照 | R:code:backend/app/services/datasets.py,code:backend/app/services/sqlite_source.py | A:DataSet,DataSetSourceType | S:SQLite表和查询只选一个；JSON字段兼容SQLite与PostgreSQL
+device.py[PH7T]: F:保存用户连接器设备、令牌摘要和打印机报告 | R:code:backend/app/services/devices.py,code:backend/app/auth/device.py | A:Device | S:令牌原文仅创建时展示，设备名按账号唯一
+folder.py[PD5T]: F:保存用户平级目录名称与颜色 | R:code:backend/app/services/folders.py | A:Folder | S:目录名按用户唯一，无多层目录
+generated_file.py[PD7T]: F:持久化生成文件索引与来源模板名称快照 | R:code:backend/app/services/generated_files.py | A:GeneratedFile | S:记录独立于Redis任务24小时期限；字节仍需保留pdfs文件
+label_format.py[PD7T]: F:保存系统标签规格、毫米尺寸与规格类别 | R:code:backend/local_server.py,code:backend/app/services/templates.py | A:LabelFormat,FormatKind | S:本地create_all不会执行迁移规格种子，入口另补缺失规格
+print_job.py[PH7T]: F:保存设备打印队列、解析后ZPL及生命周期 | R:code:backend/app/services/print_jobs.py | A:PrintJob,PrintJobStatus | S:设备获取后变sent，再报告done或error；占位符在服务端替换
+template.py[PD8T]: F:保存标签画布、尺寸、版本及目录资产关联 | R:code:backend/app/services/templates.py,code:frontend/src/editor/types.ts | A:Template | S:JSON兼容SQLite与PostgreSQL；尺寸独立快照；共用访问由服务配置决定
+template_version.py[PD7T]: F:保存手动模板版本画布和尺寸快照 | R:code:backend/app/services/template_versions.py | A:TemplateVersion | S:模板与版本号唯一，作者删除后快照仍保留
+user.py[PI9T]: F:保存用户角色与登录时间并计算功能权限和菜单显示 | R:code:backend/app/models/user_disabled_page.py,code:backend/app/models/user_hidden_page.py | A:User,Role,permissions,visibility | S:管理员功能不受禁用项限制，菜单显示仍按隐藏项计算；字段email亦可存普通账号
+user_disabled_page.py[PI7T]: F:持久化账号的禁用功能项 | R:code:backend/app/models/user.py | A:UserDisabledPage | S:无记录默认启用，不与菜单隐藏混用
+user_hidden_page.py[PI7T]: F:持久化账号的菜单隐藏项 | R:code:backend/app/models/user.py | A:UserHiddenPage | S:隐藏不撤销直接页面或API访问权限
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/routes/===
+admin.py[EI8S]: F:提供管理员用户列表、创建、修改与重置密码接口 | R:code:backend/app/services/users.py,code:backend/app/schemas/user.py | A:list_all_users,create_new_user,update_existing_user,admin_reset_password | S:禁止管理员禁用或降级自身，权限与显示分别设置
+agent.py[EH7S]: F:提供设备任务领取、打印结果、捕获上传与状态报告接口 | R:code:backend/app/auth/device.py,code:backend/app/services/print_jobs.py | A:poll_jobs,report_job_status,upload_capture,report_state | S:设备Bearer认证且免CSRF；获取任务即标记sent
+assets.py[ED7T]: F:提供图片上传、列表与受控读取接口 | R:code:backend/app/services/assets.py,code:backend/app/api_helpers.py | A:upload_image,serve_image,list_images | S:共用模板引用的图片可跨创建者读取，但仍加固响应
+auth.py[EI8T]: F:提供账号登录、退出及本人改密接口 | R:code:backend/app/services/users.py,code:backend/app/auth/csrf.py | A:login,logout,change_password | S:登录退出轮换CSRF，首次改密标记由用户配置决定
+barcodes.py[EB6T]: F:提供规范化条码数据的PNG预览接口 | R:code:backend/app/services/barcodes.py | A:preview | S:条码错误返回校验结果，不替代真实打印
+captures.py[EH5T]: F:按用户查询、读取与删除捕获ZPL | R:code:backend/app/services/captures.py | A:list_captures,get_capture,delete_capture | S:所属用户通过设备关联校验
+datasets.py[ED6S]: F:提供数据集上传、预览、删除与SQLite来源配置 | R:code:backend/app/services/datasets.py,code:backend/app/services/sqlite_source.py | A:upload_dataset,preview_dataset,configure_sqlite_dataset | S:按创建者隔离，模板共用不自动共享数据集
+devices.py[EH6T]: F:提供连接器设备创建、列表与删除接口 | R:code:backend/app/services/devices.py | A:list_devices,create_device,delete_device | S:不同于本机打印机管理，创建时只展示一次令牌
+folders.py[ED5S]: F:提供模板目录列表、创建、改名和删除接口 | R:code:backend/app/services/folders.py | A:list_folders,create_folder,update_folder,delete_folder | S:目录访问由服务层共享配置控制，删除不删除模板
+generate.py[EB8M]: F:提供变量预览、单张PDF和异步数据集批量生成及下载 | R:code:backend/app/services/pdf_renderer.py,code:backend/app/services/jobs.py,code:backend/app/services/generated_files.py | A:preview_with_variables,generate_pdf | S:变量预览不保存任务；图片读取跟随模板授权；生成不等于打印或U8登记，异步批量仍依赖Redis
+health.py[EO6T]: F:检测应用数据库和Redis并返回版本及健康状态 | R:code:backend/app/config.py,code:backend/app/version.py | A:health | S:本地试运行跳过Redis探测，不探测U8数据库
+history.py[ED7T]: F:提供个人生成记录列表、文件下载与删除接口 | R:code:backend/app/services/generated_files.py | A:list_history,download_history,delete_history | S:仅访问本人记录，缺失文件返回410；前端获取Blob预览复用下载接口，业务单号命名由服务计算
+library.py[EB5T]: F:展示起始模板并通过既有导入流程创建用户模板 | R:code:backend/app/services/templates_io.py | A:list_starters,use_starter | S:起始模板来自版本化JSON，不依赖系统用户或数据库种子
+me.py[EI6T]: F:返回当前账号及权限和显示配置 | R:code:backend/app/schemas/user.py | A:me | S:需要登录且不返回密码摘要
+print_jobs.py[EH7T]: F:提交已验证ZPL到连接器设备并查询任务 | R:code:backend/app/services/devices.py,code:backend/app/services/print_jobs.py | A:create_print_job,list_print_jobs | S:设备权限独立校验，不能代替U8 Windows直接打印路径
+templates.py[EB8M]: F:提供规格、模板CRUD、重命名、版本、克隆与导入导出 | R:code:backend/app/services/templates.py,code:backend/app/services/templates_io.py,code:backend/app/services/template_versions.py | A:create_template,update_template,restore_version,export_template,import_template_endpoint | S:共用配置允许跨账号管理；封面读取跟随模板权限
+tspl.py[EH6T]: F:将当前画布或保存模板导出TSPL文件 | R:code:backend/app/services/tspl/generator.py | A:generate_endpoint | S:先替换日期，警告通过响应头返回；导出本身不打印
+u8.py[EB9L]: F:编排U8单据库存查询、待打印复查、客户端打印准备与确认登记 | R:code:backend/app/services/u8_bills.py,code:backend/app/services/u8_inventory.py,code:backend/app/services/bill_printing.py,code:backend/app/services/label_reprinting.py,code:backend/app/services/client_label_print.py | A:bill_details,print_bill,print_stock,print_reprint_label,complete_client_print,register_bill_print | S:008阻止打印准备领取及登记；仅客户端确认后写三表，不派发服务器；待打印入口复查剩余量和待核对状态，普通打印保留人工流程；API要求非空明细，原批次重试不重打
+zpl.py[EH7M]: F:提供ZPL解析、模板导出和数据集批量生成接口 | R:code:backend/app/services/zpl/parser.py,code:backend/app/services/zpl/generator.py,code:backend/app/services/jobs.py | A:parse_endpoint,generate_endpoint | S:模板模式保留数据变量，批量模式解析数据并返回异步任务
+print_assistant.py[EH7T]: F:为已登录用户生成Windows客户端打印助手安装包 | R:code:backend/app/factory.py,code:connector/build-windows.ps1,code:connector/config.go | A:download_windows_assistant | S:使用本项目已构建二进制；用户级安装并隐藏自启动；配置绑定下载请求的中央地址，桌面入口走本机9110代理
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/schemas/===
+auth.py[FI7T]: F:验证登录账号与本人改密请求 | R:code:backend/app/schemas/types.py,code:backend/app/routes/auth.py | A:LoginRequest,ChangePasswordRequest | S:账号不必是邮箱，密码只要求非空且长度不超过256
+dataset.py[DC5T]: F:定义上传数据集、筛选结果与 SQLite 数据源的接口结构 | R:code:backend/app/services/datasets.py,code:backend/app/services/sqlite_source.py | A:SqliteConfigRequest,FilterRequest,DataSetPublic | S:SQLite 配置只能提供表名或查询之一
+device.py[DH6S]: F:验证打印设备、打印任务和抓取请求 | R:code:backend/app/services/devices.py,code:backend/app/services/print_jobs.py | A:AgentPrinter,PrintJobPublic | S:限制 ZPL 与抓取载荷大小；网络或文件打印需有效主机参数
+template.py[DB6S]: F:定义标签规格、模板编辑与便携导入导出的数据协议 | R:code:backend/app/services/templates.py,code:backend/app/services/templates_io.py | A:TemplateCreate,TemplateUpdate,TemplatePublic | S:导出协议使用版本化结构并携带图片资源
+types.py[CI5T]: F:规范账号标识的长度、字符范围及大小写 | R:code:backend/app/schemas/user.py | A:LoginName | S:账号去除首尾空白并转为小写
+user.py[DI6T]: F:验证管理员账号创建、更新、密码及权限显示请求并序列化用户 | R:code:backend/app/models/user.py,code:backend/app/schemas/types.py | A:UserPublic,CreateUserRequest,UpdateUserRequest | S:密码无强度门槛但限非空和长度；功能与菜单键分别校验，返回用户不包含密码摘要
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/services/===
+assets.py[PD6S]: F:验证图片并以唯一文件名保存、查询和去重 | R:code:backend/app/models/asset.py | A:save_image,save_image_from_bytes,find_by_sha256 | S:图片上限 5MiB；栅格图重新编码，SVG 保留源内容
+barcodes.py[KB6S]: F:生成条形码与二维码图像并校验编码内容 | R:code:backend/app/services/pdf_renderer.py | A:normalize_ean | S:EAN 校验位由编码规则计算；二维码限制空值与过长输入
+batch_render.py[AB6S]: F:按数据行替换模板变量并生成多页标签 PDF | R:code:backend/app/services/pdf_renderer.py,code:backend/app/services/placeholders.py | A:render_batch_pdf,substitute_string | S:每行复制模板；文本、条码及表格内容分别替换
+bill_printing.py[DB9L]: F:拆分单据及库存包装、保存固定批次并登记三表追溯 | R:code:backend/app/services/u8_bills.py,code:backend/app/services/u8_inventory.py | A:build_label_plan,build_stock_label_plan,save_run,confirm_run | S:最多1000张，五段条码含22位SN；新单据JSON以labelPrintSource保存类型及单据明细ID，保留旧键和KC库存格式；实际998事务写三表，完整重复幂等、局部冲突拒绝，补打禁止登记
+captures.py[PH5T]: F:保存设备抓取的打印指令供账号查看和删除 | R:code:backend/app/models/device.py | A:add,list_for_user,get_for_user,delete | S:每台设备最多保留 200 条，按设备所有者隔离
+datasets.py[PD6M]: F:解析 CSV、Excel 或 SQLite 上传并保存列信息和筛选结果 | R:code:backend/app/services/sqlite_source.py,code:backend/app/models/dataset.py | A:save_upload,preview_rows,load_rows,configure_sqlite | S:上传与行数有上限；数据集归属账号并保存到上传目录
+devices.py[PI7T]: F:注册代理设备并校验设备访问归属 | R:code:backend/app/models/device.py | A:create_device | S:明文令牌仅创建时返回；数据库保存 SHA256，访问受所有者或管理员约束
+folders.py[PD5T]: F:管理模板文件夹和模板计数 | R:code:backend/app/services/templates.py,code:backend/app/models/folder.py | A:list_folders,create_folder,delete_folder | S:共用模式允许跨账号访问；删除文件夹将模板移回未分类
+generated_files.py[PD6S]: F:登记生成文件历史并维护下载命名和保留期限 | R:code:backend/app/models/generated_file.py,code:backend/app/services/jobs.py | A:record,list_for_user,download_name_for,delete | S:历史按账号隔离；新增时清理超过 30 天记录，单据类 PDF 从所属批次清单取单号命名
+jobs.py[RM6S]: F:在工作进程后台线程生成批量 PDF 并用 Redis 保存进度 | R:code:backend/app/services/batch_render.py | A:create_job,get_job,run_in_thread,JobStatus | S:状态保留 24 小时；输出文件另存 PDF 目录，线程依赖所在服务进程存活
+label_reprinting.py[DB8S]: F:按SN查询原始追溯并恢复补打标签变量与本地快照 | R:code:backend/app/services/u8_bills.py,code:backend/app/services/bill_printing.py | A:lookup,recover | S:数量取原条码而非余额，保留SN和条码；多原条码或过多匹配拒绝；本地快照补原单位行号模板，无快照时允许缺失字段
+local_printers.py[IH5T]: F:调用 Windows PowerShell 获取服务所在电脑的打印队列 | R:code:backend/local_server.py | A:list_local_printers | S:服务端本机设备并非远程浏览器电脑；无窗口运行且限定执行时间
+pdf_renderer.py[KB8L]: F:将毫米坐标的标签对象绘制为 ReportLab PDF | R:code:backend/app/services/barcodes.py,code:backend/app/services/placeholders.py | A:render_template_pdf,_font_for_text,_synthetic_cjk_bold | S:处理坐标翻转、旋转及文字自适应；中文优先嵌入字体，无粗体字体时描边加粗；对象溢出以渲染警告返回
+placeholders.py[KB5T]: F:递归解析文本、条码和表格中的日期变量 | R:code:backend/app/services/pdf_renderer.py | A:evaluate_date_key,substitute_date_string,substitute_dates_in_canvas | S:限定日期语法；月和年偏移按日历处理
+print_jobs.py[PH7T]: F:创建、领取和更新代理打印任务 | R:code:backend/app/models/print_job.py,code:backend/app/services/devices.py | A:create_job,claim_pending_jobs,report_status | S:领取即标记 sent 并提交；中途故障不会自动重发，需显式重新提交
+sqlite_source.py[ID7M]: F:以只读方式查询用户上传的 SQLite 数据源 | R:code:backend/app/services/datasets.py | A:list_tables,execute_query,execute_table,validate_select | S:不是应用主库；启用只读与 query_only，禁止多语句和扩展，限制查询时间与 1000 行结果
+template_versions.py[PD6T]: F:保存、列出和读取模板历史快照 | R:code:backend/app/models/template_version.py,code:backend/app/services/templates.py | A:save_version | S:每模板最多保留 30 份；快照由保存请求触发
+templates.py[PD7M]: F:管理共享模板、克隆资源、修改及版本恢复 | R:code:backend/app/models/template.py,code:backend/app/services/template_versions.py,code:backend/app/services/assets.py | A:shared_templates_enabled,update,clone,restore_version | S:共享模式允许跨所有者管理；资源按需复制；没有基于旧版本号的并发拒绝机制
+templates_io.py[ID7L]: F:导入导出包含内嵌图片的便携模板并映射资源身份 | R:code:backend/app/schemas/template.py,code:backend/app/services/assets.py | A:export_template,import_template | S:校验协议版本和对象引用；单图5MB、最多20图，验证摘要并重映射ID，可按哈希复用资源
+u8_bills.py[ID9L]: F:批量读取U8单据明细与追溯数据并列出未打印完成单据 | R:code:backend/app/services/u8_pending.py,code:backend/app/services/bill_printing.py | A:list_pending_bills,list_pending_details,pending_details_query,list_details,_read_trace_state,_remaining_before_events | S:连接串仅允许008/998并核对配置账套；全部11类型不受常用限制；负数出库视为入库；首次进度读原条码而非余额，PDA移动前余额另算；批量明细保留ID排序，截断阻止待打印准备
+u8_inventory.py[ID8T]: F:联合两类正库存进行参数化筛选及选中项重新读取 | R:code:backend/app/services/u8_bills.py,code:backend/app/services/bill_printing.py | A:search,get_selected | S:source与stock_id定位行，实际数据库须与配置匹配；默认最多300条，打印前复查料号批号与当前数量
+users.py[PI8S]: F:管理账号、密码、按用户页面权限与可见性及登录认证 | R:code:backend/app/auth/password.py,code:backend/app/models/user.py | A:create_user,update_user,authenticate,reset_password | S:停用账号不可登录；成功登录持久化 UTC 上次登录时间；密码只保存哈希，重置无需强制再次更改
+windows_label_print.py[IH8S]: F:提供Windows标签驱动派发、逐页PDF保存及统一文件名辅助 | R:code:backend/app/services/windows_print_pages.ps1,code:backend/app/services/batch_render.py,code:backend/app/services/local_printers.py | A:dispatch,label_filename,output_dir | S:旧服务端派发不是当前客户端链路的回退；PDF独占创建拒绝覆盖，补打另目录，300DPI交驱动不证明出纸；LABEL_PRINT_OUTPUT_DIR仅影响此模块
+windows_print_pages.ps1[IH6T]: F:通过 Windows 驱动按标签尺寸打印页面图片 | R:code:backend/app/services/windows_label_print.py | A:PrinterName,PageListPath,WidthMm,HeightMm | S:使用零边距与自定义纸张，逐页绘图并释放打印资源
+client_label_print.py[AH9M]: F:保存固定标签批次并准备浏览器PDF或客户端驱动包及确认登记 | R:code:backend/app/services/bill_printing.py,code:backend/app/services/generated_files.py,code:backend/app/services/windows_label_print.py,code:connector/labeljobs.go | A:prepare,bundle_path,state_for,complete | S:PDF保留尺寸、PNG为300DPI，包64MiB；校验所有者、秘密回执、摘要、队列和张数；先保存提交再登记，重试不重打或重复历史；浏览器回执由用户确认，补打不写三表，PDFium及完成用进程锁串行
+u8_pending.py[DB9M]: F:根据原始标签身份和数量计算U8明细的打印进度 | R:code:backend/app/services/u8_bills.py | A:calculate_progress | S:新记录按类型及两个ID、料号批号仓库货位匹配；旧记录须唯一定位，缺失矛盾待核对；按SN去重，消费余额与补打不改首次进度；整托仅免对应移动量，保留行顺序且不预留并发数量
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/services/tspl/===
+__init__.py[CH3T]: F:导出 TSPL 生成服务的公开接口 | R:code:backend/app/services/tspl/generator.py | A:generate_tspl | S:-
+generator.py[KH6M]: F:将标签对象转换为 TSPL 打印指令 | R:code:backend/app/services/placeholders.py | A:generate_tspl | S:毫米按 DPI 换算点位；旋转取直角近似，不支持的图片等对象产生警告
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/services/u8_sql/===
+ccprk_detail.sql[FD6T]: F:读取产成品入库明细与原始单据和明细身份 | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定10，按AutoID排序；单位缺失回退存货单位
+ccprk_main.sql[FD5T]: F:按单号与日期范围查询产成品入库主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord10,Code,StartDate,EndDate | S:结果按日期和单号倒序
+cgdh_detail.sql[FD6T]: F:查询采购到货打印字段并输出单据和明细ID | R:code:backend/app/services/u8_bills.py | A:PU_ArrivalVouchs,MainID,单据ID,明细ID | S:货位为空，单据单位优先、存货单位回退；AutoID决定明细顺序
+cgdh_main.sql[FD5T]: F:按单号与日期查询采购到货单主表 | R:code:backend/app/services/u8_bills.py | A:PU_ArrivalVouch,Code,StartDate,EndDate | S:结果按日期及单号倒序
+cgrk_detail.sql[FD6T]: F:读取采购入库打印字段及稳定明细身份 | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定01，按AutoID排序；身份与显示行号分开
+cgrk_main.sql[FD5T]: F:按单号与日期查询采购入库单主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord01,Code,StartDate,EndDate | S:结果按日期及单号倒序
+clck_detail.sql[FD6T]: F:读取材料出库打印明细及单据和明细ID | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定11，保留数量符号供退库判定；按AutoID排序
+clck_main.sql[FD5T]: F:按单号与日期查询材料出库单主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord11,Code,StartDate,EndDate | S:结果按日期及单号倒序
+dbd_detail.sql[FD7T]: F:读取调拨调入侧打印字段及原始明细身份 | R:code:backend/app/services/u8_bills.py | A:TransVouch,TransVouchs,MainID,单据ID,明细ID | S:仓库取cIWhCode、货位cinposcode，关联Position同时限定仓库；数量iTVQuantity，PDA整托判定在服务层
+dbd_main.sql[FD5T]: F:按单号与日期查询调拨单主表 | R:code:backend/app/services/u8_bills.py | A:TransVouch,Code,StartDate,EndDate | S:单号与日期使用 cTVCode 和 dTVDate
+hwtz_detail.sql[FD7T]: F:读取货位调整后明细及单据和明细ID | R:code:backend/app/services/u8_bills.py | A:AdjustPVouch,AdjustPVouchs,MainID,单据ID,明细ID | S:货位取cAPosCode，Position同时匹配仓库；零散判定另查PDA追溯，按AutoID排序
+hwtz_main.sql[FD5T]: F:按单号与日期查询货位调整单主表 | R:code:backend/app/services/u8_bills.py | A:AdjustPVouch,Code,StartDate,EndDate | S:使用 cVouchCode 作为单号
+inventory_stock.sql[FD8T]: F:联合查询无货位仓库库存与有货位仓库库存汇总 | R:code:backend/app/services/u8_inventory.py | A:CurrentStock,InvPositionSum,Position | S:两分支均只返回正数量和有效仓库；source 与 AutoID 标识来源，货位名称关联同时匹配仓库与货位
+otherin_detail.sql[FD6T]: F:读取其他入库打印字段并保留单据和明细身份 | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定08，单位和包装来自存货补齐；按AutoID排序
+otherin_main.sql[FD5T]: F:按单号与日期查询其他入库单主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord08,Code,StartDate,EndDate | S:结果按日期及单号倒序
+otherout_detail.sql[FD6T]: F:读取其他出库打印字段及原始明细ID | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定09，保留负数量供退库判定；按AutoID排序
+otherout_main.sql[FD5T]: F:按单号与日期查询其他出库单主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord09,Code,StartDate,EndDate | S:结果按日期及单号倒序
+pdd_detail.sql[FD8T]: F:读取盘点实盘数量、打印字段及原始明细身份 | R:code:backend/app/services/u8_bills.py | A:CheckVouch,CheckVouchs,MainID,单据ID,明细ID | S:仅正数iCVCQuantity实盘数量；货位缺失回退主表，Position同时匹配仓库；按AutoID排序
+pdd_main.sql[FD6T]: F:查询盘点单号和盘点日期 | R:code:backend/app/services/u8_bills.py | A:CheckVouch,Code,StartDate,EndDate | S:结束日期采用次日零点排除式上界，覆盖结束当天
+xsck_detail.sql[FD6T]: F:读取销售出库打印明细并输出单据和明细ID | R:code:backend/app/services/u8_bills.py | A:rdall_yx,MainID,单据ID,明细ID | S:Class固定32，保留负数退货数量符号；按AutoID排序
+xsck_main.sql[FD5T]: F:按单号与日期查询销售出库单主表 | R:code:backend/app/services/u8_bills.py | A:RdRecord32,Code,StartDate,EndDate | S:结果按日期及单号倒序
+xtzy_detail.sql[FD7T]: F:读取形态转换后的打印明细及原始明细身份 | R:code:backend/app/services/u8_bills.py | A:AssemVouch,AssemVouchs,MainID,单据ID,明细ID | S:只选转换后，数量iAVQuantity；Position同时匹配仓库和货位，按AutoID排序
+xtzy_main.sql[FD5T]: F:按单号与日期查询形态转换单主表 | R:code:backend/app/services/u8_bills.py | A:AssemVouch,Code,StartDate,EndDate | S:单号与日期使用 cAVCode 和 dAVDate
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/backend/app/services/zpl/===
+__init__.py[CH4T]: F:集中导出 ZPL 解析、生成、批量渲染与校验接口 | R:code:backend/app/services/zpl/parser.py,code:backend/app/services/zpl/generator.py | A:parse_zpl,generate_zpl,render_batch_zpl,validate_zpl | S:-
+batch.py[AH6T]: F:按数据行替换变量并串接 ZPL 标签块 | R:code:backend/app/services/batch_render.py,code:backend/app/services/zpl/generator.py | A:render_batch_zpl | S:与 PDF 共用双花括号变量替换，单花括号变量保留给下游
+detect.py[KH5T]: F:从纸张点数与目标尺寸估计 ZPL 的打印密度 | R:code:backend/app/services/zpl/parser.py,code:backend/app/services/zpl/units.py | A:detect_dpi,scan_pw_ll | S:仅比较 203 和 300DPI；信息不足回退默认密度
+fonts.py[CH5T]: F:在编辑器字体与打印机驻留字体之间进行映射 | R:code:backend/app/services/zpl/parser.py,code:backend/app/services/zpl/generator.py | A:family_to_zpl_font,zpl_font_to_family | S:未知字体显示回退 Arial，但原始字体令牌由对象提示保留
+generator.py[KH7M]: F:将画布文本、条码及几何对象生成 ZPL 标签 | R:code:backend/app/services/zpl/fonts.py,code:backend/app/services/zpl/units.py | A:generate_zpl | S:优先保留导入对象的 ZPL 提示与原始指令；图片对象跳过并警告，不打印对象不输出
+parser.py[KH7L]: F:将 ZPL 字段解析为可编辑标签对象 | R:code:backend/app/services/zpl/fonts.py,code:backend/app/services/zpl/units.py | A:tokenize,parse_zpl | S:未建模指令和字段保留为原文透传，变量不在解析时求值
+units.py[CH5T]: F:统一毫米、打印点和旋转方向的转换 | R:code:backend/app/services/zpl/generator.py | A:dpmm_for_dpi,mm_to_dots,dots_to_mm,rotation_to_orientation | S:默认 203DPI 对应 8 点每毫米，任意角度需近似为直角
+validate.py[KH6T]: F:拒绝明显非 ZPL 的外部打印数据 | R:code:backend/app/services/zpl/parser.py | A:validate_zpl,InvalidZplError | S:要求有效顺序的 XA 和 XZ；识别 HTML、PDF、PostScript 等错误格式，不是完整指令语义验证
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/connector/===
+README.md[SH5S]: F:说明桌面打印代理配置、启动、抓取与本地 API | R:code:connector/main.go,code:connector/config.go,code:connector/localapi.go | A:server_url,printers,capture | S:设备令牌只创建时显示；网络打印使用 RAW TCP，抓取只适用于 ZPL 数据
+build-all.sh[OV4T]: F:交叉编译桌面代理的 Windows、macOS 和 Linux 发行文件 | R:code:connector/go.mod,code:connector/version.go | A:targets,GOOS,GOARCH | S:构建前清空 connector/dist，使用纯 Go 无 cgo
+capture.go[IH6S]: F:接收虚拟打印 TCP 数据并缓存重试上传到服务器 | R:code:connector/client.go,code:connector/zplcheck.go | A:Capturer,Run,handleConn,flushSpool | S:单任务 2MiB 上限与空闲超时；缓存置于用户目录，上传前检查 ZPL
+client.go[IN6T]: F:以设备令牌调用任务轮询、状态与心跳 API | R:code:connector/config.go,code:connector/main.go | A:Client,PollJobs,ReportStatus,ReportState | S:Bearer 认证，HTTP 超时 15 秒，401 提示重新创建设备令牌
+config.go[FH6S]: F:读取代理配置并规范客户端模式、打印目标与轮询参数 | R:code:connector/main.go,code:connector/printer.go | A:Config,Printer,LoadConfig | S:client_only免令牌和配置打印机要求；普通模式仍要求blg_令牌；默认本机9110、网络9100，抓取缓存属于用户
+go.mod[FV4T]: F:声明打印代理 Go 模块及平台打印依赖 | R:code:connector/go.sum | A:module,require | S:Go 1.25；Windows 使用打印队列库，配置使用 YAML
+go.sum[FV3T]: F:记录 Go 依赖包内容校验值 | R:code:connector/go.mod | A:- | S:由 Go 模块工具维护
+install-capture-cups.sh[OH4T]: F:安装 Linux 或 macOS 的 CUPS 原始抓取队列 | R:code:connector/capture.go | A:QUEUE,TARGET | S:默认转发至 127.0.0.1:9101，只适用于已输出 ZPL 的程序
+localapi.go[IN8S]: F:提供本机状态、队列、原始及驱动打印接口并代理中央网页 | R:code:connector/localprinters.go,code:connector/printer.go,code:connector/labeljobs.go | A:LocalAPI,Handler,handlePrint | S:默认loopback；仅允许中央源和自身源；桌面/app入口代理中央站点并改Host；驱动能力用capabilities握手，原始打印仍校验ZPL与份数
+localprint_unix.go[IH6T]: F:发现 CUPS 队列并向本地队列提交原始标签数据 | R:code:connector/localprinters.go | A:listSystemPrinters,printLocal,validQueueName | S:非 Windows 构建；队列名校验后作为独立参数调用 lp，不经过 shell 拼接
+localprint_windows.go[IH6T]: F:通过 Windows spooler 枚举队列并提交 RAW 标签数据 | R:code:connector/localprinters.go | A:listSystemPrinters,printLocal,validQueueName | S:仅 Windows 构建，名称按 Unicode 字符计数且拒绝控制字符，允许中文队列名
+localprinters.go[RH5S]: F:缓存系统队列并与配置打印机合并和解析 | R:code:connector/config.go,code:connector/main.go | A:LocalPrinters,mergedPrinters,resolvePrinter,Refresh | S:缓存加锁，限制 50 台和名称长度以适配服务器上报结构
+main.go[EH7S]: F:启动代理队列发现、本机API和可选任务轮询与心跳 | R:code:connector/client.go,code:connector/localapi.go,code:connector/capture.go,code:connector/printer.go | A:main,defaultConfigPath | S:client_only跳过中央设备心跳和任务领取；本机发现仍每分钟刷新；配置决定监听范围，信号控制停止
+printer.go[IH7T]: F:统一向系统队列、网络打印机或模拟文件发送标签指令 | R:code:connector/config.go,code:connector/localprint_windows.go,code:connector/localprint_unix.go | A:Print,printToTCP,printToFile | S:份数限制 1 至 1000；网络设置连接和写超时；文件模式输出 ZPL，不等同 PDF 打印
+version.go[FC3T]: F:提供代理版本用于命令行和服务器心跳 | R:code:connector/main.go,code:connector/client.go | A:Version | S:发布时随变更记录升级
+zplcheck.go[KH5T]: F:在桌面打印和抓取上传前检查 ZPL 数据 | R:code:backend/app/services/zpl/validate.py | A:looksLikeZPL | S:校验标签边界与已知错误格式，不能替代完整语义解析
+build-windows.ps1[OV5T]: F:先执行Go测试再生成Windows打印助手可执行文件 | R:code:connector/go.mod,code:backend/app/routes/print_assistant.py | A:GoCommand | S:产物供中央服务打包，员工电脑无需安装Go
+labeldriver_unix.go[IH5T]: F:在非Windows平台拒绝标签驱动打印 | R:code:connector/labeljobs.go,code:connector/labeldriver_windows.go | A:dispatchDriverLabels | S:此限制不禁用既有Unix原始ZPL打印
+labeldriver_windows.go[IH8T]: F:在客户端保存逐张PDF或经Windows驱动打印标签图像 | R:code:connector/labeljobs.go,code:connector/print-label-pages.ps1 | A:dispatchDriverLabels,saveLabelPDFs | S:PDF独占创建拒绝覆盖，失败仅清理本次创建文件；补打独立目录；打印脚本隐藏执行且五分钟超时，异常结果不得自动重打
+labeljobs.go[RH9M]: F:校验标签打印包并持久化本机任务结果以防重复派发 | R:code:connector/localapi.go,code:connector/labeldriver_windows.go,code:backend/app/services/client_label_print.py | A:LabelManifest,LabelResult,handleLabelPrint,handleLabelStatus,decodeLabelBundle | S:只接受现有本机队列；包64MiB、展开128MiB；拒绝路径穿越和保留文件名；先写processing再派发；同run同摘要完成返回原结果，执行中或异常拒绝重放；账本在用户缓存目录
+print-label-pages.ps1[IH6T]: F:通过客户端Windows驱动按标签尺寸逐页打印图片 | R:code:connector/labeldriver_windows.go | A:PrinterName,PageListPath,WidthMm,HeightMm | S:零边距和自定义纸张；驱动接收不代表已出纸；逐页释放图像和打印资源
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/connector/android/===
+README.md[SH4S]: F:说明 Android 代理 Go 核心与前台服务包装方案 | R:code:connector/mobilecore/agent.go | A:NewAgent,RunOnce,ReportState | S:文档标注 Android 包装和 AAR 未实际构建验证，不具备桌面 localhost 快速通道
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/connector/mobilecore/===
+agent.go[IN6S]: F:提供 gomobile 可调用的设备 API 客户端 | R:code:connector/mobilecore/runonce.go | A:Agent,NewAgent,ReportState | S:设备令牌认证；401 作为独立永久认证错误传给移动外壳
+print.go[IH6T]: F:通过 RAW TCP 提交移动端 ZPL 打印 | R:code:connector/mobilecore/runonce.go | A:printTCP | S:打印超时 10 秒，最多 1000 份，发送前补尾部换行
+runonce.go[AH7T]: F:执行一次移动代理轮询、校验、打印和结果上报 | R:code:connector/mobilecore/agent.go,code:connector/mobilecore/print.go,code:connector/mobilecore/zpl.go | A:RunOnce,runSummary | S:任务打印机必须匹配；401 返回 authError 且无绑定异常以保留 JSON，单任务失败计入汇总
+zpl.go[KH5T]: F:校验移动打印数据是否包含合理的 ZPL 标签边界 | R:code:connector/zplcheck.go | A:looksLikeZPL,ensureTrailingNewline | S:拒绝已知非 ZPL 格式，规则与桌面端保持对应
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/docs/===
+FAQ.en.md[SU4M]: F:上游英文常见问题，涵盖编辑器、数据源与打印代理 | R:code:docs/HELP.en.md | A:- | S:密码强度和首次改密等说明可能落后于本项目定制实现
+FAQ.pl.md[SU4M]: F:上游波兰语常见问题及打印故障帮助 | R:code:docs/HELP.pl.md | A:- | S:上游规则不覆盖当前 U8 定制和宽松密码要求
+FAQ.zh.md[SU4T]: F:回答查询、预览、打印机、模板恢复和登记失败的中文常见问题 | R:code:docs/HELP.zh.md | A:- | S:008只读；打印失败先核对原任务
+HELP.en.md[SU4L]: F:英文编辑器、模板、批量生成与打印操作指南 | R:code:docs/FAQ.en.md,code:frontend/src/pages/HelpPage.tsx | A:- | S:部分上游账号规则与本项目实现不同，引用图片来自帮助截图目录
+HELP.pl.md[SU4L]: F:波兰语模板设计、数据集和打印代理操作指南 | R:code:docs/FAQ.pl.md,code:frontend/src/pages/HelpPage.tsx | A:- | S:作为上游帮助参考，不作为当前定制业务规则的唯一依据
+HELP.zh.md[SU5T]: F:提供登录、模板变量、单据库存、补打和打印记录的中文操作说明 | R:code:frontend/src/pages/HelpPage.tsx,code:docs/aoci/business-rules.md | A:- | S:帮助在前端构建时打包；普通单据空选全部，库存必须勾选，浏览器须人工确认后登记
+PROJECT.md[SB4L]: F:保留上游 MVP 的产品范围、架构与数据模型设计 | R:code:docs/aoci/architecture.md | A:- | S:历史规格不代表 U8 定制和 SQLite 本机模式的当前状态
+UAT.md[SQ5S]: F:列出真实硬件、文件和日常工作流的人工验收项目 | R:code:connector/README.md,code:docs/PROJECT.md | A:- | S:是待执行验收清单，不可将模拟测试视为真实设备验收完成
+u8-pdf-printing.md[SB7T]: F:说明当前打印确认链路、三张追溯表写入格式及脱敏示例 | R:code:backend/app/services/bill_printing.py,code:backend/app/services/client_label_print.py,code:docs/aoci/business-rules.md | A:TraceBackOrder,TraceBackGoods,TraceBackOnlyCode | S:008只读998写入；确认失败仅重试登记，补打不写三表；进度取原条码数量，新增labelPrintSource不改表结构或回填历史
+client-printing.md[SH7T]: F:说明无安装浏览器打印、可选助手安装和异常恢复部署 | R:code:backend/app/routes/print_assistant.py,code:connector/build-windows.ps1,code:frontend/src/lib/clientLabelPrint.ts | A:- | S:浏览器需人工确认完成；助手PDF按SN逐张保存；未知结果先核对不重打；008仍只读，验证未触及真实U8数据
+README.md[SG6T]: F:组织当前文档阅读顺序与业务、运维和历史参考资料入口 | R:code:README.md,code:项目说明.md,code:docs/项目复用指南.md,code:docs/部署与维护.md | A:- | S:aoci目录Markdown可直接读；历史上游计划截图不证明当前实现或验收已完成
+部署与维护.md[SO8S]: F:指导两种运行配置、初始化、助手部署、备份恢复和检查 | R:code:start.ps1,code:compose.yml,code:backend/docker-entrypoint.sh,code:backend/alembic/versions/0006_asset_sha256.py | A:- | S:本机与Docker的管理员密钥和数据库分开；0006回填依赖在线查询，不支持完整离线SQL；默认容器缺助手，SQLite无一键迁移；独立根CI需看实际结果
+项目复用指南.md[SG8S]: F:指导从独立仓库获取项目、无AOCI接手、抽取模块与迁移数据 | R:code:backend/app/routes/u8.py,code:backend/app/services/bill_printing.py,code:frontend/src/lib/clientLabelPrint.ts,code:AGENTS.md | A:- | S:新仓库根直接是项目，抽取模块不得沿用原有效索引；会话CSRF保留，设备令牌非业务令牌；查询字段非模板变量，源码不含用户数据与打印快照
+验证记录.md[SQ5T]: F:记录本机交接检查、独立发布目标及未执行的部署和硬件验收 | R:code:docs/部署与维护.md | A:- | S:396后端和26前端通过只对应同次代码，不证明线上CI或真实U8、Go、Docker及打印机验收通过
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/docs/aoci/===
+README.md[SE7T]: F:说明可选AOCI的MCP接入、版本化资产和独立仓库恢复 | R:code:tools/aoci/maintenance.ps1,code:tools/aoci/mcp_client.py,code:AGENTS.md | A:- | S:repo指实际克隆根而非原绝对路径；仅上传白名单正式资产，跨机器按Guide重绑；缺工具按文档源码开发，不手改索引
+architecture.md[SB8T]: F:映射两种部署入口、前后端调用链与打印及持久化边界 | R:code:backend/local_server.py,code:backend/app/factory.py,code:backend/app/services/client_label_print.py,code:docs/client-printing.md | A:- | S:AOCI可选且不得向上索引；SQLite与Compose分开；浏览器偏好不等于账号持久化；打印需用户确认或客户端回执，不回退服务器队列
+business-rules.md[SB9T]: F:汇总打印、明细进度、库存、补打及权限持久化业务规则 | R:code:backend/app/services/bill_printing.py,code:backend/app/services/u8_bills.py,code:backend/app/services/u8_pending.py,code:backend/app/services/client_label_print.py,code:frontend/src/pages/StockPrintPage.tsx | A:- | S:008只读998测试写入；库存须选，单据空选为全部，待打印入口限明确剩余行；历史歧义待核对，未实现跨任务预留；共用模板个人常用，补打计数待供应商确认
+database-schema.md[SD8T]: F:描述应用模型、三表追溯格式与新增稳定单据明细身份 | R:code:backend/app/services/bill_printing.py,code:backend/app/services/u8_pending.py,code:backend/app/models/user.py | A:- | S:依据源码而非实库探测；新Order扩展labelPrintSource但不改旧键和表结构，不回填历史；进度取原条码数量，OnlyCode.sum可能是余额；不启用SQL Server或SQLite数据库Volume
+known-issues.md[SR7T]: F:记录历史追溯歧义、并发防重、备份及部署硬件验收限制 | R:code:backend/app/services/u8_pending.py,code:backend/app/services/client_label_print.py,code:docs/部署与维护.md | A:- | S:客户端幂等非全局防重且无并发预留，补打计数暂缓；异步批量仍需Redis；独立根工作流可识别但线上CI结果另验
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/===
+.dockerignore[FV3T]: F:排除前端容器上下文中的依赖和构建产物 | R:code:frontend/Dockerfile | A:- | S:实际 Compose 使用项目根构建上下文，应核对根目录排除规则
+.prettierignore[FQ3T]: F:排除格式化工具处理依赖、产物和锁文件 | R:code:frontend/.prettierrc | A:- | S:-
+.prettierrc[FQ4T]: F:配置前端分号、引号、缩进及行宽格式 | R:code:frontend/package.json | A:printWidth,tabWidth | S:-
+Dockerfile[OV6T]: F:构建 React 前端并使用 nginx 提供静态页面和 API 代理 | R:code:compose.yml,code:frontend/nginx.conf,code:frontend/package.json | A:builder,runtime | S:构建上下文必须是项目根以导入 docs；优先 npm ci，构建产物进入 nginx 镜像
+eslint.config.js[FQ4T]: F:配置 TypeScript、React Hooks 和刷新插件静态检查 | R:code:frontend/package.json | A:tseslint.config | S:排除 dist 与 node_modules，兼容 Prettier 格式规则
+index.html[EU5T]: F:提供中文网页入口并在React加载前设置浏览器主题 | R:code:frontend/src/main.tsx | A:root,label-theme | S:仅保存dark时用暗色，其余默认浅色，避免首屏主题闪烁
+nginx.conf[ON6T]: F:提供 SPA 回退、后端 API 代理和静态缓存配置 | R:code:frontend/Dockerfile,code:compose.yml | A:location,proxy_pass | S:入口 HTML 强制重新验证，指纹资源长缓存；API 代理超时 60 秒，上传上限 12M
+package-lock.json[FV4L]: F:锁定前端依赖及包完整性用于可重复安装 | R:code:frontend/package.json | A:packages,lockfileVersion | S:通过 npm 更新；不人工修改包哈希和依赖树
+package.json[FV6T]: F:声明前端依赖及构建、类型检查、测试和格式化命令 | R:code:frontend/package-lock.json,code:frontend/vite.config.ts | A:scripts,dependencies | S:构建先 tsc 再 Vite；lint 不允许警告，运行时使用 React、Konva 和查询缓存
+postcss.config.js[FV3T]: F:启用 Tailwind 与 CSS 前缀处理 | R:code:frontend/tailwind.config.js | A:plugins | S:-
+tailwind.config.js[FU4T]: F:配置 Tailwind 从 HTML 与 TSX 源码收集样式类 | R:code:frontend/postcss.config.js,code:frontend/src/index.css | A:content,theme | S:未扩展自定义主题和插件
+tsconfig.app.json[FQ5T]: F:配置浏览器前端的严格 TypeScript 检查 | R:code:frontend/tsconfig.json | A:compilerOptions,include | S:启用未使用变量与参数检查，ES2022 和 bundler 模块解析，类型检查不输出 JS
+tsconfig.app.tsbuildinfo[ZV2T]: F:保存TypeScript前端增量构建的文件清单与编译器版本 | R:code:frontend/tsconfig.app.json | A:root,version | S:机器生成缓存不是业务源码，源码变动后可重建
+tsconfig.json[FQ4T]: F:组织前端与 Vite 配置的 TypeScript 项目引用 | R:code:frontend/tsconfig.app.json,code:frontend/tsconfig.node.json | A:references | S:本配置不直接包含源文件
+tsconfig.node.json[FQ4T]: F:严格检查 Vite 配置的 TypeScript 类型 | R:code:frontend/vite.config.ts,code:frontend/tsconfig.json | A:compilerOptions,include | S:仅包含 vite.config.ts，使用 bundler 模块解析且不输出 JS
+tsconfig.node.tsbuildinfo[ZV2T]: F:记录 Vite 配置增量构建缓存元数据 | R:code:frontend/tsconfig.node.json | A:root,version | S:机器生成缓存不是业务源码，应由编译器重建
+vite.config.ts[FV6T]: F:配置开发服务、API 代理与前端产物分块 | R:code:frontend/package.json,code:frontend/src/App.tsx | A:defineConfig,server,build | S:开发监听 5173 并代理 web:8000，与本机 18003 服务不同；允许读取上层 docs，生产不生成 sourcemap
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/===
+App.tsx[AU8S]: F:定义登录、首页、模板设计和各业务页面路由 | R:code:frontend/src/components/ProtectedRoute.tsx,code:frontend/src/layouts/AppLayout.tsx | A:App | S:设计页独立全屏；库存页占满视口；单据、存货和补打共用 bills 权限，打印机主页是本机列表，代理页面另有高级入口
+index.css[FU6S]: F:定义全局尺寸、公共样式和浅色主题覆盖规则 | R:code:frontend/src/components/ThemeToggle.tsx,code:frontend/index.html | A:data-theme | S:通过主题选择器覆盖既有暗色类，弹窗和帮助等次级页面共用主题
+main.tsx[EU6T]: F:初始化 React 根节点、查询客户端、语言和样式 | R:code:frontend/src/App.tsx,code:frontend/src/lib/queryClient.ts,code:frontend/src/i18n/config.ts | A:createRoot | S:缺失 root 节点即失败，StrictMode 开发环境可重复触发生命周期
+vite-env.d.ts[FV3T]: F:引入 Vite 客户端与资源导入类型声明 | R:code:frontend/tsconfig.app.json | A:vite/client | S:-
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/components/===
+AppFooter.tsx[CU3T]: F:显示统一英文页脚 Label Printing System | R:code:frontend/src/layouts/AppLayout.tsx | A:AppFooter | S:-
+ImportTemplateModal.tsx[AU6M]: F:完成模板文件预检、名称尺寸及对象配置和导入 | R:code:frontend/src/hooks/useTemplates.ts,code:frontend/src/components/ui/Modal.tsx | A:ImportTemplateModal,UploadPhase,ConfigurePhase | S:先预览再提交，可选择重复资源复用或复制，警告在确认阶段展示
+LanguageSwitcher.tsx[CL4T]: F:切换中文、波兰语与英文界面 | R:code:frontend/src/i18n/config.ts | A:LanguageSwitcher | S:按语言前两位判断当前选择
+PrintPageTabs.tsx[CU4T]: F:提供单据打印、存货打印和标签补打页签 | R:code:frontend/src/App.tsx | A:PrintPageTabs | S:页签导航不代替前后端权限校验
+ProtectedRoute.tsx[MI8T]: F:限制未登录、需改密、非管理员和无功能权限的页面访问 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/App.tsx | A:ProtectedRoute | S:功能权限决定能否访问，菜单是否显示另行处理；前端跳转不替代后端授权
+ThemeToggle.tsx[CU4T]: F:切换页面浅色或暗色并保存浏览器偏好 | R:code:frontend/index.html,code:frontend/src/index.css | A:ThemeToggle | S:主题存 localStorage，默认浅色，不按服务器账号保存
+BrowserLabelPrintDialog.tsx[AU7T]: F:展示标签PDF供浏览器打印并接收完成确认 | R:code:frontend/src/lib/browserLabelPrint.ts,code:frontend/src/components/ui/Modal.tsx | A:BrowserLabelPrintDialog | S:须勾选已打印才能确认；原生PDF工具栏选择本机队列；关闭返回取消且不登记，网页不能检测实际出纸
+ClientPrintRecovery.tsx[AR8T]: F:展示待确认客户端任务并恢复确认或人工结束 | R:code:frontend/src/lib/clientLabelPrint.ts,code:frontend/src/lib/queryClient.ts | A:ClientPrintRecovery | S:恢复只查原任务并补登记；活动打印时禁用操作；人工结束前提示核对出纸，结束不会补印或登记
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/components/ui/===
+Button.tsx[CU3T]: F:提供统一按钮样式和禁用状态 | R:code:frontend/src/index.css | A:Button | S:透传原生按钮属性
+Input.tsx[CU3T]: F:提供标签、提示和错误信息的输入组件 | R:code:frontend/src/index.css | A:Input | S:转发 ref，未指定 id 时生成标签关联标识
+Modal.tsx[CU6T]: F:提供普通与宽版内部滚动的通用弹窗 | R:code:frontend/src/index.css | A:Modal | S:遮罩关闭在pointerdown起点命中背景时触发，选中文本拖出松开不误关闭；Escape也可关闭
+Select.tsx[CU3T]: F:提供统一带标签的下拉框 | R:code:frontend/src/index.css | A:Select | S:转发 ref 和原生 select 属性
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/editor/===
+AlignmentBar.tsx[AU5S]: F:提供相对纸张与相对选区的对齐、分布及层级操作 | R:code:frontend/src/editor/store.ts | A:AlignmentBar | S:至少一项可按纸张对齐，两项可选区对齐，三项可均匀分布
+Canvas.tsx[AU8M]: F:绘制标签纸张与对象并处理选择、变形、拖动及视图缩放 | R:code:frontend/src/editor/store.ts,code:frontend/src/editor/units.ts | A:Canvas | S:缩放只影响视图，不改毫米尺寸、对象坐标、撤销历史或模板；Alt 拖动按手势合并复制，纸张圆角仅作为设计背景呈现
+ExportTsplModal.tsx[AU5S]: F:按指定 DPI 预览、复制或下载 TSPL 指令 | R:code:frontend/src/hooks/useTspl.ts | A:ExportTsplModal | S:画布变化触发防抖生成并显示不支持对象警告
+ExportZplModal.tsx[AU6M]: F:导出单模板 ZPL 或基于数据集批量生成指令 | R:code:frontend/src/hooks/useZpl.ts,code:frontend/src/hooks/useDatasets.ts | A:ExportZplModal,TemplatePanel,BatchPanel | S:生成请求防抖；批量输出通过作业状态轮询获取
+ImportZplModal.tsx[AU6S]: F:解析粘贴的 ZPL 并确认 DPI 和画布内容导入 | R:code:frontend/src/hooks/useZpl.ts | A:ImportZplModal,contentBounds | S:结合当前标签尺寸检测密度并提示内容越界，导入结果由调用方应用到画布
+LabelSettingsModal.tsx[AU5S]: F:设置标签宽高、方向、圆角及常用尺寸 | R:code:frontend/src/editor/store.ts | A:LabelSettingsModal | S:宽高大于0且不超1000mm，圆角不超短边一半；打开时用当前纸张值重置输入
+LeftPanel.tsx[AU6M]: F:添加文本、条码、几何、表格、图片及参考背景 | R:code:frontend/src/editor/store.ts,code:frontend/src/hooks/useAssets.ts | A:LeftPanel | S:大图片按纸张适配；参考背景锁定且不可打印，层级移至底部
+PrintModal.tsx[AH7M]: F:从当前画布生成 ZPL 并直连本地代理或排入设备任务 | R:code:frontend/src/lib/localAgent.ts,code:frontend/src/hooks/usePrintJobs.ts,code:frontend/src/hooks/useZpl.ts | A:PrintModal,isOnline | S:优先本机代理，否则选择在线设备；直连与队列是不同路径，队列打印轮询至完成或失败
+PrintPreviewModal.tsx[CU5T]: F:在弹窗内显示已生成的标签 PDF 并提供下载 | R:code:frontend/src/hooks/useGeneratePdf.ts,code:frontend/src/components/ui/Modal.tsx | A:PrintPreviewModal | S:下载复用原 Blob，不重复生成历史记录；对象 URL 在释放时撤销
+RightPanel.tsx[AU7L]: F:编辑选中对象几何、字体、条码、图片与表格属性 | R:code:frontend/src/editor/store.ts,code:frontend/src/lib/datePlaceholder.ts | A:RightPanel,TextProps,BarcodeProps,TableProps | S:支持变量提示和锁定、可打印属性；表格按行列重整单元内容，没有合并单元格能力
+SeriesWizard.tsx[AU7L]: F:引导上传、映射变量、筛选和批量 PDF 生成 | R:code:frontend/src/hooks/useDatasets.ts,code:frontend/src/editor/types.ts | A:SeriesWizard,detectTemplatePlaceholders,SqliteConfigPanel | S:支持上传 SQLite 查询配置；识别双花括号变量并按作业进度下载输出，不能与 U8 标签登记混淆
+Toolbar.tsx[AU6S]: F:提供编辑器保存、撤销、预览、导入导出与版本入口 | R:code:frontend/src/editor/store.ts,code:frontend/src/hooks/useGeneratePdf.ts | A:Toolbar | S:显示自动保存状态和服务端版本，手动保存快照由设计页处理
+VersionHistoryModal.tsx[AU5T]: F:查看手动保存快照并确认恢复模板 | R:code:frontend/src/hooks/useTemplateVersions.ts | A:VersionHistoryModal | S:恢复会形成新快照，历史不是编辑器本地撤销栈
+store.ts[RU8L]: F:管理标签画布、选区、对象属性、对齐层级和撤销重做状态 | R:code:frontend/src/editor/types.ts,code:frontend/src/editor/units.ts | A:useEditorStore,newObjectId,computeAlignedPositions | S:撤销最多50快照，载入清空历史及dirty；编辑标记dirty，调整纸张为单次可撤销修改；视图缩放不持久化进画布
+types.ts[CU7S]: F:定义毫米单位的画布及文本、条码、图片、表格等对象结构 | R:code:frontend/src/editor/store.ts,code:backend/app/services/pdf_renderer.py | A:CanvasData,EditorObject,EditorObjectBase,emptyCanvas | S:画布协议版本为 1；对象有可打印、锁定和 ZPL 提示，表格没有合并单元格字段
+units.ts[KU5T]: F:计算画布适配比例及旋转对象包围盒 | R:code:frontend/src/editor/types.ts | A:fitScale,getBoundsMm | S:未测得容器尺寸时返回零，几何计算在毫米空间执行
+useAutosave.ts[RU6T]: F:防抖保存变更画布并返回保存时间和错误状态 | R:code:frontend/src/editor/types.ts,code:frontend/src/pages/EditorPage.tsx | A:useAutosave | S:默认等待 30 秒；仅保存 dirty 画布，清理计时器不会取消已发起的保存请求
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/editor/objects/===
+BarcodeObject.tsx[CU6S]: F:以服务端预览图绘制条码并回传变形坐标 | R:code:frontend/src/editor/types.ts,code:frontend/src/editor/Canvas.tsx | A:BarcodeObject,barcodePreviewUrl | S:坐标按视图比例换回毫米，重置节点缩放；不可打印对象仅降低显示透明度
+ImageObject.tsx[CU5T]: F:加载标签图片并处理拖动和缩放 | R:code:frontend/src/hooks/useAssets.ts,code:frontend/src/editor/types.ts | A:ImageObject | S:保存毫米尺寸而非视图像素，变形后重置节点 scale
+LineObject.tsx[CU4T]: F:绘制直线并将拖动和缩放回写为毫米几何 | R:code:frontend/src/editor/types.ts | A:LineObject | S:变形折算端点并重置视觉缩放，避免重载后尺寸丢失
+RectObject.tsx[CU4T]: F:绘制方框并回传位置、旋转和尺寸 | R:code:frontend/src/editor/types.ts | A:RectObject | S:将节点 scale 折算成真实尺寸，不把视图比例持久化
+TableObject.tsx[CU6S]: F:绘制表格网格、单元文本与列宽布局 | R:code:frontend/src/editor/types.ts,code:backend/app/services/pdf_renderer.py | A:TableObject,tableColEdges | S:有效自定义列宽归一到整体宽度，否则等宽；列边界算法与后端对应，不支持合并单元格
+TextObject.tsx[CU6T]: F:绘制文本与文本框并处理变形 | R:code:frontend/src/editor/types.ts | A:TextObject | S:文本框缩放修改框大小而保持字号；单行文本缩放修改字号，位置以毫米回写
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/hooks/===
+useAssets.ts[AU5T]: F:查询、上传图片资源并提供预览地址 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/csrf.ts | A:useAssets,useUploadAsset,assetImageUrl | S:上传携带会话与 CSRF，成功后失效资源查询缓存
+useAuth.ts[AI7T]: F:提供登录、退出和本人改密请求及认证缓存更新 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/lib/api.ts | A:useLogin,useLogout,useChangePassword | S:登录写入当前用户缓存；退出清空查询缓存，防止切换账号沿用上一账号结果
+useCaptures.ts[AH4T]: F:轮询打印抓取记录并支持获取 ZPL 和删除 | R:code:frontend/src/lib/api.ts | A:useCaptures,fetchCaptureZpl,useDeleteCapture | S:每 30 秒刷新抓取列表
+useDatasets.ts[AD6S]: F:管理数据集上传、预览、筛选、SQLite 配置与批量作业 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/csrf.ts | A:useDatasets,useConfigureSqlite,useSubmitBatch,useJobStatus | S:作业默认每秒轮询，done 或 error 后停止；上传使用 CSRF 与会话，输出单独下载
+useDevices.ts[AH5T]: F:查询与创建删除代理设备并监测连接状态 | R:code:frontend/src/lib/api.ts | A:useDevices,useCreateDevice,useDeleteDevice,useDeviceOnline | S:列表每 30 秒刷新，连接向导启用时每 3 秒检测在线状态
+useFolders.ts[AD4T]: F:操作模板文件夹并维护关联查询缓存 | R:code:frontend/src/lib/api.ts | A:useFolders,useCreateFolder,useUpdateFolder,useDeleteFolder | S:增删改同时失效文件夹及模板查询缓存
+useGeneratePdf.ts[AB6T]: F:请求单标签 PDF 并提取渲染耗时和警告 | R:code:frontend/src/lib/csrf.ts,code:frontend/src/lib/download.ts | A:useGeneratePdf,downloadPdfBlob | S:返回 Blob 供预览复用；响应警告不代表整份生成失败
+useGeneratedFiles.ts[AD6T]: F:读取本人生成历史并加载、下载或删除文件 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/download.ts | A:useHistory,fetchHistoryFile,downloadHistoryFile,useDeleteGeneratedFile | S:预览和下载复用受所有者限制的文件接口，下载使用服务端给出的名称
+useLocalPrinters.ts[AH7T]: F:读取当前浏览器电脑的本机打印队列并定时刷新 | R:code:frontend/src/lib/localAgent.ts | A:useLocalPrinters | S:始终经客户端助手，过滤非本机队列；无助手不回退服务器列表；失败不重试，每30秒刷新
+useMe.ts[AI6T]: F:查询当前登录账号供路由及菜单授权使用 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/types.ts | A:useMe,ME_QUERY_KEY | S:401 返回未登录空值，其他错误不吞掉
+usePrintJobs.ts[AH6T]: F:查询代理任务并提交打印队列请求 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/types.ts | A:usePrintJobs,useCreatePrintJob | S:仅 watch 模式每 1.5 秒轮询，新任务提交后失效队列缓存
+useTemplateVersions.ts[AD5T]: F:查询模板快照并请求恢复某版本 | R:code:frontend/src/hooks/useTemplates.ts,code:frontend/src/lib/api.ts | A:useTemplateVersions,useRestoreVersion | S:恢复成功更新版本列表及模板详情缓存
+useTemplates.ts[AD7M]: F:查询规格、管理模板、使用预设及便携导入导出 | R:code:frontend/src/lib/api.ts,code:frontend/src/editor/types.ts | A:useTemplates,useLabelFormats,useUpdateTemplate,exportTemplateToFile | S:导入先预检再提交，删除与克隆失效列表；共享访问范围由后端控制而非客户端所有者过滤
+useTspl.ts[AH5T]: F:按 DPI 请求生成 TSPL 内容及对象警告 | R:code:frontend/src/lib/csrf.ts,code:frontend/src/editor/types.ts | A:useGenerateTspl | S:发送当前画布，不触发 U8 追溯登记
+useUsers.ts[AI6T]: F:提供管理员账号创建、更新、权限显示配置和密码重置请求 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/lib/types.ts | A:useUsers,useCreateUser,useUpdateUser,useResetUserPassword | S:修改权限后同时刷新本人账号缓存；页面权限与可见性使用不同字段
+useZpl.ts[AH6S]: F:解析、生成和批量输出 ZPL 内容 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/csrf.ts | A:useParseZpl,useGenerateZpl,useSubmitZplBatch | S:解析支持自动 DPI，生成返回文本与警告并携带 CSRF
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/i18n/===
+config.ts[FL5T]: F:初始化中文、英文和波兰语语言资源与浏览器语言检测 | R:code:frontend/src/i18n/locales/zh.json,code:frontend/src/i18n/locales/en.json,code:frontend/src/i18n/locales/pl.json | A:i18n | S:默认回退中文，仅读取并缓存 labelprint.lang，不采用浏览器语言自动覆盖
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/i18n/locales/===
+en.json[FL4L]: F:保存英文界面按钮、编辑器、权限与打印相关文案 | R:code:frontend/src/i18n/config.ts | A:app,editor,history,historyPage | S:插值键需与调用匹配；业务规则不能仅依赖上游翻译文案判断
+pl.json[FL4L]: F:保存波兰语界面与操作状态翻译 | R:code:frontend/src/i18n/config.ts | A:app,editor,history,historyPage | S:与调用的键和插值参数保持兼容
+zh.json[FL5M]: F:保存中文品牌、标签设计、模板、权限和打印操作翻译 | R:code:frontend/src/i18n/config.ts | A:app,editor,historyPage | S:纸张圆角是预览提示；文案简短自然，翻译键和插值必须与调用对应
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/layouts/===
+AppLayout.tsx[AU7S]: F:组织侧栏账号区、页面容器及打印确认恢复弹窗 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/components/ClientPrintRecovery.tsx,code:frontend/src/components/BrowserLabelPrintDialog.tsx | A:AppLayout | S:菜单同时检查权限和显示，库存fillViewport限制主内容滚动；恢复入口需单据权限，浏览器打印确认在布局全局承载
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/lib/===
+api.ts[CN7T]: F:统一 JSON API 请求、会话、CSRF 和业务错误包装 | R:code:frontend/src/lib/csrf.ts | A:api,ApiError | S:非安全方法携带 CSRF，始终附带会话；204 无返回体，失败保留状态码与错误标识
+connectorSetup.ts[KH5T]: F:检测客户端操作系统并生成代理 YAML 配置 | R:code:frontend/src/lib/installerSetup.ts | A:detectOS,buildConfigYaml,PrinterChoice | S:纯函数不进行网络操作；支持网络打印和文件模拟目标
+csrf.ts[CS5T]: F:读取后端设置的 CSRF Cookie | R:code:frontend/src/lib/api.ts | A:readCsrfCookie | S:初次响应前可无令牌，返回 null 由请求层处理
+datePlaceholder.ts[KU5T]: F:在编辑器提示中展示日期变量预期值 | R:code:backend/app/services/placeholders.py | A:evaluateDatePlaceholder,isPlainDateKey | S:仅供客户端提示；生成时以服务端结果为准，月偏移需夹紧有效日期
+download.ts[CU4T]: F:使用临时链接下载指定名称的 Blob | R:code:frontend/src/hooks/useGeneratedFiles.ts | A:triggerDownload | S:下载后移除链接并撤销对象 URL
+installerSetup.ts[OH6M]: F:生成各系统单文件代理安装脚本及下载产物 | R:code:frontend/src/lib/connectorSetup.ts,code:frontend/src/lib/zip.ts | A:installerFor,installerArtifact,macPasteCommand | S:安装文件内含设备令牌，需按配置文件保护；下载桌面代理并设置用户级后台启动
+localAgent.ts[IN7T]: F:探测并调用访问电脑的打印助手状态、队列与打印接口 | R:code:connector/localapi.go,code:frontend/src/lib/clientLabelPrint.ts | A:agentFetch,probeLocalAgent,fetchLocalPrinters,printLocal | S:固定127.0.0.1:9110，探测1.5秒，打印延长超时；失败可能是浏览器策略，不证明中央服务离线且不回退服务器打印
+localPrinterSettings.ts[RH7T]: F:保存打印机默认隐藏偏好并计算可见及默认队列 | R:code:frontend/src/pages/LocalPrintersPage.tsx | A:readLocalPrinterSettings,saveLocalPrinterSettings,visibleLocalPrinters,defaultLocalPrinter | S:浏览器localStorage全账号共用；隐藏打印机不能作默认，失效默认回退第一台可见队列
+queryClient.ts[RN5T]: F:配置共享查询缓存与请求重试 | R:code:frontend/src/main.tsx | A:queryClient | S:401 和 403 不重试，其他查询有限重试，默认 30 秒保持新鲜
+types.ts[CD6T]: F:声明账号权限、页面可见性和代理打印协议类型 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/hooks/usePrintJobs.ts | A:User,PageFeature,VisiblePage,Device,PrintJob | S:可见页面包含首页和帮助，功能权限键与其不同，任务具有 pending、sent、done、error 状态
+zip.ts[KL4T]: F:在浏览器创建单文件不压缩 ZIP 并记录 Unix 权限 | R:code:frontend/src/lib/installerSetup.ts | A:zipSingleFile,crc32 | S:用于保存 macOS 可执行安装脚本权限，不是通用压缩库
+browserLabelPrint.ts[AU7T]: F:协调浏览器打印弹窗的打开、完成确认与取消结果 | R:code:frontend/src/components/BrowserLabelPrintDialog.tsx,code:frontend/src/lib/clientLabelPrint.ts | A:BROWSER_PRINTER,openBrowserPrint,currentBrowserPrint,confirmBrowserPrint | S:一次只允许一个打印窗口；确认结果是用户声明，不是浏览器或设备自动出纸证据
+clientLabelPrint.ts[AH9S]: F:编排标签准备、本机派发或浏览器确认及登记恢复 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/localAgent.ts,code:frontend/src/lib/browserLabelPrint.ts,code:backend/app/services/client_label_print.py | A:clientLabelPrint,pendingClientPrint,recoverClientPrint,dismissClientPrint,isClientPrintActive,ClientPrintError | S:浏览器模式不探测助手，取消不登记；助手须driver-labels-v1能力，发送前持久化原run；丢失回执仅查询原任务不重发；按账号恢复同源待确认任务并核对摘要张数；登记失败保留原回执，未处理前禁止新打印
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/pages/===
+BillPrintPage.tsx[AU9L]: F:查询单据和明细打印进度、修改包装并通过客户端打印 | R:code:frontend/src/lib/api.ts,code:frontend/src/hooks/useTemplates.ts,code:frontend/src/hooks/useLocalPrinters.ts,code:frontend/src/lib/clientLabelPrint.ts | A:BillPrintPage,effectiveDetailIndexes,eligibleDetailIndexes,preview,printLabels | S:普通空选为全部；待打印入口默认剩余量且待核对行禁选，携明细ID并在完成后刷新；常用最多8项，默认模板按账号存浏览器；支持浏览器无助手打印，预览浮层及三秒完成提示，008只读
+ChangePasswordPage.tsx[AI5S]: F:提供本人当前密码和新密码确认表单 | R:code:frontend/src/hooks/useAuth.ts,code:frontend/src/hooks/useMe.ts | A:ChangePasswordPage | S:要求两次新密码相同，没有强度门槛；认证错误按状态反馈
+ConnectPrinterWizard.tsx[AH6L]: F:引导创建电脑设备、下载代理安装器并检测连接和打印机 | R:code:frontend/src/lib/installerSetup.ts,code:frontend/src/hooks/useDevices.ts | A:ConnectPrinterWizard | S:设备创建时获取唯一明文令牌；等待超时可排查，向导不等于已完成实体打印验证
+DashboardPage.tsx[AU8S]: F:展示未打印完成单据、待打明细数和打印设置入口 | R:code:frontend/src/hooks/useMe.ts,code:frontend/src/lib/localPrinterSettings.ts,code:backend/app/routes/u8.py | A:DashboardPage,billLink,defaultTemplateId | S:全部类型近30天不受常用筛选；入口携pending及原单据ID；菜单兼顾权限显示；默认模板按账号存浏览器；进度不是出纸证据
+DevicesPage.tsx[AH6M]: F:高级管理代理设备、一次性令牌和虚拟打印抓取内容 | R:code:frontend/src/hooks/useDevices.ts,code:frontend/src/hooks/useCaptures.ts | A:DevicesPage,CapturesInbox,CreateDeviceModal | S:令牌仅创建时显示，在线判断依据一分钟心跳窗口，抓取可复制和导入编辑器
+EditorPage.tsx[AU8M]: F:加载模板并组织画布编辑、保存、快捷键与导入导出弹窗 | R:code:frontend/src/editor/store.ts,code:frontend/src/editor/useAutosave.ts,code:frontend/src/hooks/useTemplates.ts | A:EditorPage,keepCurrentLabelSize | S:每模板仅首次载入画布；保存中有新编辑不清 dirty；自动保存无快照，手动保存有快照；纸张宽高同步模板记录，输入框内抑制编辑快捷键
+HelpPage.tsx[AU4S]: F:在应用中按语言显示 Markdown 帮助和常见问题 | R:code:docs/HELP.zh.md,code:docs/FAQ.zh.md | A:HelpPage,resolveImageSrc | S:文档与图片在构建时打包，不从运行服务动态读取更新
+HistoryPage.tsx[AU6S]: F:列出本人生成记录并点击行直接预览、下载或删除 | R:code:frontend/src/hooks/useGeneratedFiles.ts | A:HistoryPage | S:PDF用浮层、ZPL用文本；关闭撤销对象URL并恢复焦点，下载采用服务端名称，删除先确认
+LibraryPage.tsx[AU5S]: F:展示预设与共享模板并克隆进入设计器 | R:code:frontend/src/hooks/useTemplates.ts,code:frontend/src/hooks/useMe.ts | A:LibraryPage | S:使用操作需模板权限，克隆产生新模板而非编辑原始预设
+LocalPrintersPage.tsx[AH7S]: F:管理访问电脑打印队列的默认显示设置及助手安装 | R:code:frontend/src/hooks/useLocalPrinters.ts,code:frontend/src/lib/localPrinterSettings.ts,code:backend/app/routes/print_assistant.py | A:LocalPrintersPage | S:队列发现需本机助手，设置仅存浏览器；隐藏默认则回退可见队列；安装后通过桌面本机代理入口访问中央系统
+LoginPage.tsx[AI6T]: F:提供账号密码登录及语言主题选择 | R:code:frontend/src/hooks/useAuth.ts,code:frontend/src/hooks/useMe.ts | A:LoginPage | S:登录标识不限定邮箱；错误区分密码、CSRF 和通用故障，已登录自动跳转
+ReprintPage.tsx[AU8M]: F:按SN恢复原标签并选择模板与客户端方式预览补打 | R:code:frontend/src/lib/api.ts,code:frontend/src/hooks/useTemplates.ts,code:frontend/src/lib/localPrinterSettings.ts,code:frontend/src/lib/clientLabelPrint.ts | A:ReprintPage | S:份数1至100整数且原SN条码不变；浏览器无需助手，直打用本机队列；008禁补打，完成三秒可关闭；补打次数暂缓
+StockPrintPage.tsx[AU9L]: F:筛选库存并核对修改勾选项数量包装后通过客户端打印 | R:code:frontend/src/lib/api.ts,code:frontend/src/lib/localPrinterSettings.ts,code:frontend/src/hooks/useTemplates.ts,code:frontend/src/lib/clientLabelPrint.ts | A:StockPrintPage,keyOf,currentHour | S:未选不得预览或打印，核对弹窗可改选择数量包装且不超库存；表格内部滚动、操作区在底部；单号YYYYMMDDHH，批号取库存；浏览器无需助手，直打本机，008只读
+TemplatesPage.tsx[AU8L]: F:管理模板文件夹、名称、共享、尺寸和便携导入导出 | R:code:frontend/src/hooks/useTemplates.ts,code:frontend/src/hooks/useFolders.ts,code:frontend/src/components/ImportTemplateModal.tsx | A:TemplatesPage,RenameTemplateModal,NewTemplateModal | S:重命名单独提交；新建依赖有效规格，自定义尺寸10至1000mm，横向重排宽高，圆角不超短边一半；模板由后端持久保存
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/frontend/src/pages/admin/===
+UsersPage.tsx[AI8L]: F:管理账号角色、启停、重置密码、功能权限与菜单显示 | R:code:frontend/src/hooks/useUsers.ts,code:frontend/src/lib/types.ts | A:UsersPage,PermissionsModal,VisibilityModal,CreateUserModal | S:管理员逐账号配置，功能与显示分开；管理员拥有全部功能，不能在页面降级停用本人；账号无需邮箱，显示服务端上次成功登录时间
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/tools/aoci/===
+maintenance.ps1[XE7T]: F:提供固定项目范围的 AOCI 检查和 Guide 命令 | R:code:docs/aoci/README.md,code:AGENTS.md | A:Action,aociProjectRoot | S:根路径从脚本位置计算，始终显式 --repo 指向 BarcodeLabelGen，保留命令退出码，不向上定位 Git 根
+mcp_client.py[XE7S]: F:用标准输入输出 JSON-RPC 诊断本项目 AOCI MCP | R:code:docs/aoci/README.md | A:main,request | S:实际启动项目工具并显式 --repo；只负责传输，语义和维护步骤来自实时工具；诊断输出只能在本目录，结束关闭子进程，不替代宿主工具加载
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/tools/===
+capture-help-screenshots.py[XQ4S]: F:使用 Playwright 和已有登录会话生成上游帮助截图 | R:code:docs/HELP.en.md,code:docs/HELP.pl.md | A:jar_cookies,shoot,run_lang | S:固定上游 Linux 路径与服务器地址；当前 Windows 不直接运行
+rebuild.sh[OV5T]: F:重建容器服务并回收旧镜像与构建缓存 | R:code:compose.yml | A:docker compose,docker image prune,docker builder prune | S:属于容器交付脚本；执行会重建服务并清理 Docker 缓存，不用于本机 SQLite 启动
+
+===C:/Users/Administrator/Desktop/labelPrint/BarcodeLabelGen/docs/sql/===
+pending-labels.sql[SB8L]: F:提供待打印候选、11类明细和追溯关联的只读SQL核对脚本 | R:code:backend/app/services/u8_bills.py,code:backend/app/services/u8_pending.py | A:StartDate,EndDate,MainID,OrderUuid,Barcode | S:是应用分阶段读取SQL，不是单条最终待打印聚合；参数0和空串为占位，仅执行对应明细段；最终唯一匹配及数量扣减由Python完成，不依赖SQL JSON函数，不直接汇总余额；008只读

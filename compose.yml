@@ -1,0 +1,112 @@
+# BarcodeLabelGen — production docker-compose
+#
+# Exposes nginx ONLY on 127.0.0.1:18003 — the host port is meant to be
+# fronted by Tailscale Serve (or a reverse proxy of your choice), not
+# exposed publicly. After `docker compose up -d` run on the host:
+#
+#     tailscale serve --bg --https=18003 http://127.0.0.1:18003
+#
+# Then access via: https://<your-host>.<your-tailnet>.ts.net:18003
+
+name: barcodelabelgen
+
+services:
+  nginx:
+    build:
+      # Root context so the frontend build can reach docs/ for HelpPage's
+      # markdown imports. Dockerfile lives in frontend/ but addresses paths
+      # relative to the repo root.
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: barcodelabelgen/frontend:latest
+    container_name: blg-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18003:80"
+    depends_on:
+      web:
+        condition: service_started
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: barcodelabelgen/backend:latest
+    container_name: blg-web
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://blg:${POSTGRES_PASSWORD:-blg-dev-password}@db:5432/blg
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-prod}
+      U8_SERVER: ${U8_SERVER:-}
+      U8_USER: ${U8_USER:-}
+      U8_PASSWORD: ${U8_PASSWORD:-}
+      U8_DATABASE: ${U8_DATABASE:-ufdata_998_2021}
+      U8_BARCODE_ACCOUNT_CODE: ${U8_BARCODE_ACCOUNT_CODE:-008}
+      U8_ODBC_DRIVER: ${U8_ODBC_DRIVER:-}
+      SHARED_TEMPLATES: ${SHARED_TEMPLATES:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      FLASK_ENV: production
+      # Date placeholders ({{date+14d}}) compute "today" in server-local
+      # time — without TZ the container runs UTC and can be a day off.
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+      - pdfs:/app/pdfs
+      - assets:/app/assets
+    networks:
+      - internal
+
+  db:
+    image: postgres:16-alpine
+    container_name: blg-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: blg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-blg-dev-password}
+      POSTGRES_DB: blg
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blg -d blg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: blg-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  pdfs:
+  assets:
+
+networks:
+  internal:
+    driver: bridge
